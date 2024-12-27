@@ -1090,11 +1090,23 @@ at::Tensor conv2d_padding_symint(
     c10::SymIntArrayRef stride, std::string_view padding, c10::SymIntArrayRef dilation,
     c10::SymInt groups) {
   auto [input, is_batched] = batchify(input_, /*num_spatial_dims=*/ 2, "conv2d");
+  //---
+  float min_val_input = input.min().item<float>();
+  float max_val_input = input.max().item<float>();
+  Tensor quantized_input = (input - min_val_input)/ (max_val_input - min_val_input) * 255;
+  quantized_input = quantized_input.to(c10::kQInt8);
+
+  float min_val_weight = weight.min().item<float>();
+  float max_val_weight = weight.max().item<float>();
+  Tensor quantized_weight = (weight - min_val_weight)/ (max_val_weight - min_val_weight) * 255;
+  quantized_weight = quantized_weight.to(c10::kQInt8);
+  //---
+
   Tensor output;
   if (at::isComplexType(input_.scalar_type())) {
-    output = complex_convolution_mode(input, weight, bias, stride, padding, dilation, groups);
+    output = complex_convolution_mode(quantized_input, quantized_weight, bias, stride, padding, dilation, groups);
   } else {
-    output = at::_convolution_mode_symint(input, weight, bias, stride, padding, dilation, groups);
+    output = at::_convolution_mode_symint(quantized_input, quantized_weight, bias, stride, padding, dilation, groups);
   }
   return is_batched ? std::move(output) : output.squeeze(0);
 }
