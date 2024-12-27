@@ -121,5 +121,19 @@ with torch.no_grad():
     accuracy = 100 * correct / total
     print(f"Accuracy of Test Data: {accuracy.item():.2f}%")
 
+def calculate_model_size(model):
+    total_params = 0
+    total_size = 0  
+    for param in model.parameters():
+        param_size = param.nelement() * param.element_size()
+        total_params += param.nelement()
+        total_size += param_size
+
+    total_size_MB = total_size / (1024**2)
+    return total_params, total_size_MB
 avg_inference_time = (time.time() - start_time)/ 100
+total_params, model_size_MB = calculate_model_size(model)
+
+print(f"Total Parameters: {total_params}")
+print(f"Model Size: {model_size_MB:.2f} MB")
 print(f"Average Inference Time: {avg_inference_time:.6f} seconds")
